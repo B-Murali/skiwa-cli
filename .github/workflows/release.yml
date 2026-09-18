@@ -89,17 +89,20 @@ jobs:
       - name: Unpack gh and bundle it into skiwa/assets
         run: |
           set -euo pipefail
-          case "$GH_ASSET" in
-            *.zip) unzip -q "$GH_ASSET" ;;
-            *) tar -xf "$GH_ASSET" ;;
-          esac
-          extracted="gh_${GH_VERSION}_${{ matrix.gh_os }}_${{ matrix.gh_arch }}"
           mkdir -p skiwa/assets/gh
+          if [ "${{ matrix.gh_os }}" = "windows" ]; then
+            # The windows gh zip has no top-level wrapper dir: bin/gh.exe
+            # and LICENSE sit at the archive root, unlike the *nix tarballs.
+            unzip -q "$GH_ASSET"
+            cp "bin/${{ matrix.gh_bin_name }}" "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
+            cp "LICENSE" skiwa/assets/gh/LICENSE
+            exit 0
+          fi
+          tar -xf "$GH_ASSET"
+          extracted="gh_${GH_VERSION}_${{ matrix.gh_os }}_${{ matrix.gh_arch }}"
           cp "$extracted/bin/${{ matrix.gh_bin_name }}" "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
           cp "$extracted/LICENSE" skiwa/assets/gh/LICENSE
-          if [ "${{ matrix.gh_os }}" != "windows" ]; then
-            chmod +x "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
-          fi
+          chmod +x "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
 
       - name: Build with PyInstaller
         run: |
