@@ -200,14 +200,20 @@ jobs:
       - name: Create release and upload artifacts
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+          # No actions/checkout in this job, so gh can't infer the repo from
+          # a local .git dir — pass --repo explicitly on every invocation
+          # (and keep GH_REPO as a belt-and-suspenders fallback).
+          if gh release view "${{ github.ref_name }}" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" \
+              --repo "$GH_REPO" \
               --clobber \
               artifacts/*.zip artifacts/*.tar.gz artifacts/*.pkg artifacts/SHA256SUMS.txt
           else
             gh release create "${{ github.ref_name }}" \
+              --repo "$GH_REPO" \
               --title "${{ github.ref_name }}" \
               --generate-notes \
               artifacts/*.zip artifacts/*.tar.gz artifacts/*.pkg artifacts/SHA256SUMS.txt
