@@ -34,7 +34,7 @@ _FALLBACK_AGENT_DIRS_DATA = {
 def _load_agent_dirs_data() -> dict:
     """Read AGENT_DIRS_FILE, falling back to defaults if it's missing/invalid."""
     try:
-        data = json.loads(AGENT_DIRS_FILE.read_text())
+        data = json.loads(AGENT_DIRS_FILE.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         print(
             f"warning: could not read {AGENT_DIRS_FILE} ({exc}); using built-in defaults",

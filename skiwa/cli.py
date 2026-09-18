@@ -189,6 +189,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Legacy Windows consoles default stdout/stderr to a non-UTF-8 codepage
+    # (e.g. cp437/cp1252); skill names/descriptions from the remote catalog
+    # can contain arbitrary Unicode, so force UTF-8 out to avoid a crash on
+    # the first emoji or accented character. No-op where already UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
     parser = build_parser()
     args = parser.parse_args(argv)
     if not args.command:

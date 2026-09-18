@@ -24,7 +24,7 @@ def _load_skill(agent: str, skill_dir: Path, filter_agent: str | None) -> Instal
     (e.g. installed under copilot's dir but only declared for claude).
     """
     skill_md = skill_dir / "SKILL.md"
-    meta = parse_front_matter(skill_md.read_text()) if skill_md.exists() else {}
+    meta = parse_front_matter(skill_md.read_text(encoding="utf-8")) if skill_md.exists() else {}
     declared_agents = meta.get("agents", [])
     if isinstance(declared_agents, str):
         declared_agents = [declared_agents]
