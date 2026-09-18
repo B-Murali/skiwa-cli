@@ -89,7 +89,10 @@ jobs:
       - name: Unpack gh and bundle it into skiwa/assets
         run: |
           set -euo pipefail
-          tar -xf "$GH_ASSET"
+          case "$GH_ASSET" in
+            *.zip) unzip -q "$GH_ASSET" ;;
+            *) tar -xf "$GH_ASSET" ;;
+          esac
           extracted="gh_${GH_VERSION}_${{ matrix.gh_os }}_${{ matrix.gh_arch }}"
           mkdir -p skiwa/assets/gh
           cp "$extracted/bin/${{ matrix.gh_bin_name }}" "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
@@ -111,15 +114,15 @@ jobs:
       - name: Package release archive
         run: |
           set -euo pipefail
-          stage="stage/skiwa-${{ matrix.id }}"
+          stage="stage/skiwa-cli-${{ matrix.id }}"
           mkdir -p "$stage"
           cp "dist/${{ matrix.bin_name }}" "$stage/"
           cp skiwa/assets/gh/LICENSE "$stage/THIRD-PARTY-LICENSE-gh.txt"
-          archive="skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}"
+          archive="skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}"
           if [ "${{ matrix.archive_ext }}" = "zip" ]; then
-            (cd stage && zip -r "../$archive" "skiwa-${{ matrix.id }}")
+            (cd stage && zip -r "../$archive" "skiwa-cli-${{ matrix.id }}")
           else
-            tar -C stage -czf "$archive" "skiwa-${{ matrix.id }}"
+            tar -C stage -czf "$archive" "skiwa-cli-${{ matrix.id }}"
           fi
           python -c "
           import hashlib, sys
@@ -129,10 +132,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: skiwa-${{ matrix.id }}
+          name: skiwa-cli-${{ matrix.id }}
           path: |
-            skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}
-            skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}.sha256
+            skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}
+            skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}.sha256
           if-no-files-found: error
 
   publish:
@@ -155,7 +158,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --generate-notes \
-            artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release upload "${{ github.ref_name }}" \
+              --clobber \
+              artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
+          else
+            gh release create "${{ github.ref_name }}" \
+              --title "${{ github.ref_name }}" \
+              --generate-notes \
+              artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
+          fi
