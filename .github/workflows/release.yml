@@ -67,6 +67,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stamp version from git tag
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="0.0.0-dev"
+          fi
+          printf '__version__ = "%s"\n' "$version" > skiwa/_version.py
+          echo "SKIWA_VERSION=$version" >> "$GITHUB_ENV"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -146,8 +157,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          [ "$GITHUB_REF_NAME" ] || version="0.0.0-dev"
           pkgroot="pkgroot-${{ matrix.id }}"
           mkdir -p "$pkgroot/usr/local/bin"
           cp "dist/skiwa" "$pkgroot/usr/local/bin/skiwa"
@@ -156,7 +165,7 @@ jobs:
           pkgbuild \
             --root "$pkgroot" \
             --identifier com.skiwa.cli \
-            --version "$version" \
+            --version "$SKIWA_VERSION" \
             --install-location / \
             "$pkg"
           python -c "

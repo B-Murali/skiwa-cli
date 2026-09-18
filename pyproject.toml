@@ -1,6 +1,6 @@
 [project]
 name = "skiwa"
-version = "0.1.0"
+version = "0.1.2"
 description = "Browse, install, and scaffold agent skills from a single GitHub repo."
 requires-python = ">=3.9"
 

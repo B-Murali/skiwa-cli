@@ -137,6 +137,22 @@ def test_agent_dirs_config():
         assert data == config._FALLBACK_AGENT_DIRS_DATA
 
 
+def test_version_flag():
+    import sys
+
+    from skiwa import __version__
+
+    for flag in ("--version", "-v"):
+        result = subprocess.run(
+            [sys.executable, "-m", "skiwa.cli", flag],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent,
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == f"skiwa {__version__}"
+
+
 if __name__ == "__main__":
     test_frontmatter()
     test_scan_installed()
@@ -145,4 +161,5 @@ if __name__ == "__main__":
     test_matches_query()
     test_remote_fetch_index()
     test_agent_dirs_config()
+    test_version_flag()
     print("ok")

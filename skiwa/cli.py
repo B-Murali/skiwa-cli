@@ -6,6 +6,7 @@ import re
 import sys
 
 from . import remote
+from . import __version__
 from .config import AGENT_DIRS
 from .frontmatter import strip_front_matter
 from .local import scan_installed
@@ -160,6 +161,9 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="skiwa", description="Browse and manage agent skills.")
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"skiwa {__version__}"
+    )
     sub = parser.add_subparsers(dest="command")
 
     p_search = sub.add_parser("search", help="Search the remote skill catalog.")
