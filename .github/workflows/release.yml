@@ -142,12 +142,44 @@ jobs:
           print(f'{hashlib.sha256(data).hexdigest()}  $archive')
           " > "$archive.sha256"
 
+      - name: Build macOS installer package (.pkg)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          [ "$GITHUB_REF_NAME" ] || version="0.0.0-dev"
+          pkgroot="pkgroot-${{ matrix.id }}"
+          mkdir -p "$pkgroot/usr/local/bin"
+          cp "dist/skiwa" "$pkgroot/usr/local/bin/skiwa"
+          chmod +x "$pkgroot/usr/local/bin/skiwa"
+          pkg="skiwa-cli-${{ matrix.id }}.pkg"
+          pkgbuild \
+            --root "$pkgroot" \
+            --identifier com.skiwa.cli \
+            --version "$version" \
+            --install-location / \
+            "$pkg"
+          python -c "
+          import hashlib
+          data = open('$pkg', 'rb').read()
+          print(f'{hashlib.sha256(data).hexdigest()}  $pkg')
+          " > "$pkg.sha256"
+
       - uses: actions/upload-artifact@v4
         with:
           name: skiwa-cli-${{ matrix.id }}
           path: |
             skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}
             skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}.sha256
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: skiwa-cli-${{ matrix.id }}-pkg
+          path: |
+            skiwa-cli-${{ matrix.id }}.pkg
+            skiwa-cli-${{ matrix.id }}.pkg.sha256
           if-no-files-found: error
 
   publish:
@@ -173,10 +205,10 @@ jobs:
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" \
               --clobber \
-              artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
+              artifacts/*.zip artifacts/*.tar.gz artifacts/*.pkg artifacts/SHA256SUMS.txt
           else
             gh release create "${{ github.ref_name }}" \
               --title "${{ github.ref_name }}" \
               --generate-notes \
-              artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
+              artifacts/*.zip artifacts/*.tar.gz artifacts/*.pkg artifacts/SHA256SUMS.txt
           fi
