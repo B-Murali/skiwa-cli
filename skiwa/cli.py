@@ -93,8 +93,12 @@ def _print_skill_metadata(match: dict) -> None:
     print(match.get("description") or "(no description)")
 
 
-def _print_skill_body(match: dict) -> None:
-    """Fetch and print a matched skill's SKILL.md body, if it has one."""
+def _print_skill_body(match: dict, full: bool = False, snippet_lines: int = 6) -> None:
+    """Fetch and print a matched skill's SKILL.md body, if it has one.
+
+    By default only the first `snippet_lines` lines are shown; pass
+    `full=True` to print the entire body.
+    """
     manifest_path = match.get("manifestPath")
     if not manifest_path:
         return
@@ -104,9 +108,19 @@ def _print_skill_body(match: dict) -> None:
         print(f"\n(Could not fetch SKILL.md body: {exc})", file=sys.stderr)
         return
     body = strip_front_matter(manifest_text).strip()
-    if body:
-        print()
+    if not body:
+        return
+
+    print()
+    if full:
         print(body)
+        return
+
+    lines = body.splitlines()
+    print("\n".join(lines[:snippet_lines]))
+    if len(lines) > snippet_lines:
+        print("…")
+        print(f"(showing first {snippet_lines} lines — use --full to see the complete guide)")
 
 
 def cmd_describe(args: argparse.Namespace) -> int:
@@ -120,7 +134,7 @@ def cmd_describe(args: argparse.Namespace) -> int:
         return 1
 
     _print_skill_metadata(match)
-    _print_skill_body(match)
+    _print_skill_body(match, full=args.full)
     return 0
 
 
@@ -158,6 +172,9 @@ def build_parser() -> argparse.ArgumentParser:
         "describe", help="Show full details for one skill from the remote catalog."
     )
     p_describe.add_argument("skill", help="Skill id (repo/name) or name.")
+    p_describe.add_argument(
+        "--full", action="store_true", help="Print the entire SKILL.md body instead of a short snippet."
+    )
     p_describe.set_defaults(func=cmd_describe)
 
     p_list = sub.add_parser("list", help="List locally installed skills.")
