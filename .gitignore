@@ -1,0 +1,8 @@
+.venv/
+.idea/
+*.egg-info/
+__pycache__/
+*.pyc
+dist/
+build/
+skiwa/assets/gh/

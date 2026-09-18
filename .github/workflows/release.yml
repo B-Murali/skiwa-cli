@@ -1,0 +1,161 @@
+name: Release
+
+# Two ways to run this: push a `v*` tag (builds + publishes a GitHub Release),
+# or trigger manually to just build and inspect the artifacts.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+env:
+  # Pinned deliberately — bump by hand when a new gh version is wanted, not
+  # auto-resolved to "latest" so builds stay reproducible.
+  GH_VERSION: "2.101.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: macos-arm64
+            os: macos-14
+            gh_os: macOS
+            gh_arch: arm64
+            gh_ext: zip
+            add_data_sep: ":"
+            bin_name: skiwa
+            gh_bin_name: gh
+            archive_ext: tar.gz
+          - id: macos-x64
+            os: macos-13
+            gh_os: macOS
+            gh_arch: amd64
+            gh_ext: zip
+            add_data_sep: ":"
+            bin_name: skiwa
+            gh_bin_name: gh
+            archive_ext: tar.gz
+          - id: linux-x64
+            os: ubuntu-22.04
+            gh_os: linux
+            gh_arch: amd64
+            gh_ext: tar.gz
+            add_data_sep: ":"
+            bin_name: skiwa
+            gh_bin_name: gh
+            archive_ext: tar.gz
+          - id: windows-x64
+            os: windows-latest
+            gh_os: windows
+            gh_arch: amd64
+            gh_ext: zip
+            add_data_sep: ";"
+            bin_name: skiwa.exe
+            gh_bin_name: gh.exe
+            archive_ext: zip
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash # available on all three runner OSes; keeps steps identical
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build deps
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller .
+
+      - name: Download and verify gh
+        run: |
+          set -euo pipefail
+          asset="gh_${GH_VERSION}_${{ matrix.gh_os }}_${{ matrix.gh_arch }}.${{ matrix.gh_ext }}"
+          base="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+          curl -fL -o "$asset" "$base/$asset"
+          curl -fL -o checksums.txt "$base/gh_${GH_VERSION}_checksums.txt"
+          python .github/scripts/verify_checksum.py "$asset" checksums.txt
+          echo "GH_ASSET=$asset" >> "$GITHUB_ENV"
+
+      - name: Unpack gh and bundle it into skiwa/assets
+        run: |
+          set -euo pipefail
+          tar -xf "$GH_ASSET"
+          extracted="gh_${GH_VERSION}_${{ matrix.gh_os }}_${{ matrix.gh_arch }}"
+          mkdir -p skiwa/assets/gh
+          cp "$extracted/bin/${{ matrix.gh_bin_name }}" "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
+          cp "$extracted/LICENSE" skiwa/assets/gh/LICENSE
+          if [ "${{ matrix.gh_os }}" != "windows" ]; then
+            chmod +x "skiwa/assets/gh/${{ matrix.gh_bin_name }}"
+          fi
+
+      - name: Build with PyInstaller
+        run: |
+          set -euo pipefail
+          pyinstaller --onefile --name skiwa \
+            --add-data "skiwa/assets${{ matrix.add_data_sep }}skiwa/assets" \
+            pyinstaller_entry.py
+
+      - name: Verify smoke test still passes against the source tree
+        run: python test_smoke.py
+
+      - name: Package release archive
+        run: |
+          set -euo pipefail
+          stage="stage/skiwa-${{ matrix.id }}"
+          mkdir -p "$stage"
+          cp "dist/${{ matrix.bin_name }}" "$stage/"
+          cp skiwa/assets/gh/LICENSE "$stage/THIRD-PARTY-LICENSE-gh.txt"
+          archive="skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}"
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            (cd stage && zip -r "../$archive" "skiwa-${{ matrix.id }}")
+          else
+            tar -C stage -czf "$archive" "skiwa-${{ matrix.id }}"
+          fi
+          python -c "
+          import hashlib, sys
+          data = open('$archive', 'rb').read()
+          print(f'{hashlib.sha256(data).hexdigest()}  $archive')
+          " > "$archive.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skiwa-${{ matrix.id }}
+          path: |
+            skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}
+            skiwa-${{ matrix.id }}.${{ matrix.archive_ext }}.sha256
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Combine checksums
+        run: cat artifacts/*.sha256 > artifacts/SHA256SUMS.txt
+
+      - name: Create release and upload artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            artifacts/*.zip artifacts/*.tar.gz artifacts/SHA256SUMS.txt
