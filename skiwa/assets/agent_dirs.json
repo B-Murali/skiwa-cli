@@ -1,0 +1,12 @@
+{
+  "_comment": "Per-agent local skill directories, relative to the user's home dir. Edit this file (not config.py) to add/change agents or paths. shared_alias dirs are appended to every agent's own dirs.",
+  "shared_alias": [
+    ".agents/skills"
+  ],
+  "agents": {
+    "copilot": [".copilot/skills"],
+    "claude": [".claude/skills"],
+    "gemini": [".gemini/skills"],
+    "cursor": [".cursor/skills"]
+  }
+}

@@ -56,15 +56,19 @@ This mirrors what's already in this env (`~/.agents/skills/<name>/SKILL.md`).
 
 ## Local install directories (per agent)
 
-| agent | install dir |
-|---|---|
-| copilot | `~/.agents/skills/<name>/` (confirmed — matches this env) |
-| claude | `~/.claude/skills/<name>/` |
-| gemini | TBD — placeholder until confirmed |
-| cursor | TBD — placeholder until confirmed |
+Each agent also discovers skills from `~/.agents/skills/<name>/` — the
+cross-tool "agentskills.io" alias directory that Copilot, Claude, Gemini CLI,
+and Cursor all additionally scan alongside their own dedicated directory.
 
-`list`/`install --agent` only offers agents with a known dir; others need
-confirmation before being wired in.
+| agent | install dir(s) |
+|---|---|
+| copilot | `~/.copilot/skills/<name>/`, `~/.agents/skills/<name>/` |
+| claude | `~/.claude/skills/<name>/`, `~/.agents/skills/<name>/` |
+| gemini | `~/.gemini/skills/<name>/`, `~/.agents/skills/<name>/` |
+| cursor | `~/.cursor/skills/<name>/`, `~/.agents/skills/<name>/` |
+
+All four known agents now have confirmed directories; `list`/`install --agent`
+would only skip an agent if a future one is added without a confirmed dir.
 
 ## Commands
 
@@ -84,6 +88,6 @@ confirmation before being wired in.
 
 ## Open items before coding starts
 
-Still need from you: `repo`, `repo_skills_path` confirmation, `template_repo`
-(or "stub for now"), and gemini/cursor install dirs if you want them wired
-in immediately vs. added later.
+Still need from you: `template_repo` (or "stub for now"). `repo`/`repo_skills_path`
+and all four agents' install dirs (copilot/claude/gemini/cursor) are now confirmed
+and wired in.

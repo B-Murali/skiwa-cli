@@ -39,17 +39,31 @@ def _load_skill(agent: str, skill_dir: Path, filter_agent: str | None) -> Instal
     )
 
 
-def _iter_agent_skill_dirs(agents: list[str]):
-    """Yield (agent, skill_dir) for every skill dir under each agent's base dir.
+def _agent_bases(agent: str) -> list[Path]:
+    """Normalize an AGENT_DIRS entry (None | Path | list[Path]) to a list."""
+    value = AGENT_DIRS.get(agent)
+    if not value:
+        return []
+    return value if isinstance(value, list) else [value]
 
-    Agents whose base dir isn't set or doesn't exist yield nothing.
+
+def _iter_agent_skill_dirs(agents: list[str]):
+    """Yield (agent, skill_dir) for every skill dir under each agent's base dir(s).
+
+    Agents whose base dir(s) aren't set or don't exist yield nothing. A
+    skill name present under more than one base dir for the same agent is
+    yielded only once (first base dir wins).
     """
     for a in agents:
-        base = AGENT_DIRS.get(a)
-        if not base or not base.is_dir():
-            continue
-        for skill_dir in sorted(p for p in base.iterdir() if p.is_dir()):
-            yield a, skill_dir
+        seen: set[str] = set()
+        for base in _agent_bases(a):
+            if not base.is_dir():
+                continue
+            for skill_dir in sorted(p for p in base.iterdir() if p.is_dir()):
+                if skill_dir.name in seen:
+                    continue
+                seen.add(skill_dir.name)
+                yield a, skill_dir
 
 
 def scan_installed(agent: str | None = None) -> list[InstalledSkill]:

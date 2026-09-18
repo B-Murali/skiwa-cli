@@ -86,3 +86,18 @@ def parse_front_matter(text: str) -> dict:
     for line in lines[1:end]:
         parser.feed(line)
     return parser.result()
+
+
+def strip_front_matter(text: str) -> str:
+    """Return `text` with its leading `---` front-matter block removed.
+
+    Returns `text` unchanged if there's no (closed) front-matter block.
+    """
+    lines = text.splitlines()
+    if not lines or not _FENCE.match(lines[0]):
+        return text
+    try:
+        end = next(i for i in range(1, len(lines)) if _FENCE.match(lines[i]))
+    except StopIteration:
+        return text
+    return "\n".join(lines[end + 1 :])

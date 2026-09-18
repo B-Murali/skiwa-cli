@@ -8,7 +8,7 @@ requires-python = ">=3.9"
 skiwa = "skiwa.cli:main"
 
 [tool.setuptools.package-data]
-skiwa = ["assets/*.ans", "assets/gh/*"]
+skiwa = ["assets/*.ans", "assets/*.json", "assets/gh/*"]
 
 [build-system]
 requires = ["setuptools>=61"]
