@@ -123,7 +123,16 @@ jobs:
           cp skiwa/assets/gh/LICENSE "$stage/THIRD-PARTY-LICENSE-gh.txt"
           archive="skiwa-cli-${{ matrix.id }}.${{ matrix.archive_ext }}"
           if [ "${{ matrix.archive_ext }}" = "zip" ]; then
-            (cd stage && zip -r "../$archive" "skiwa-cli-${{ matrix.id }}")
+            # `zip` isn't guaranteed to be on PATH in Git-bash on windows
+            # runners, so build the archive with Python's zipfile instead.
+            python -c "
+          import pathlib, zipfile
+          root = pathlib.Path('stage/skiwa-cli-${{ matrix.id }}')
+          with zipfile.ZipFile('$archive', 'w', zipfile.ZIP_DEFLATED) as zf:
+              for f in root.rglob('*'):
+                  if f.is_file():
+                      zf.write(f, f.relative_to('stage'))
+          "
           else
             tar -C stage -czf "$archive" "skiwa-cli-${{ matrix.id }}"
           fi
