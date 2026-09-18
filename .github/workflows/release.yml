@@ -32,7 +32,7 @@ jobs:
             gh_bin_name: gh
             archive_ext: tar.gz
           - id: macos-x64
-            os: macos-13
+            os: macos-15-intel
             gh_os: macOS
             gh_arch: amd64
             gh_ext: zip
